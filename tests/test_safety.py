@@ -52,6 +52,13 @@ def test_good_aqi_guidance_keeps_usual_routine() -> None:
     assert len(daily_guidance(30, False)) == 2
 
 
+def test_moderate_aqi_guidance_suggests_a_lower_forecast_window() -> None:
+    """Moderate AQI guidance stays flexible and references forecast choice."""
+    guidance = daily_guidance(75, False)
+    assert len(guidance) == 1
+    assert "lower forecast AQI" in guidance[0]
+
+
 def test_ventilation_guidance_preserves_unavailable_status() -> None:
     """Ventilation guidance never substitutes a missing AQI value."""
     assert "unavailable" in safe_ventilation_guidance(None).lower()
@@ -60,3 +67,8 @@ def test_ventilation_guidance_preserves_unavailable_status() -> None:
 def test_ventilation_guidance_for_elevated_aqi() -> None:
     """Elevated conditions produce cautious, non-medical wording."""
     assert "limit unfiltered outdoor air" in safe_ventilation_guidance(140)
+
+
+def test_ventilation_guidance_for_lower_aqi() -> None:
+    """Lower outdoor AQI does not trigger elevated-air guidance."""
+    assert "Ventilate when useful" in safe_ventilation_guidance(40)

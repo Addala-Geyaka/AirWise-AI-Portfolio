@@ -6,6 +6,7 @@ const airResponse = {
   latitude: 12.9716,
   longitude: 77.5946,
   source: "Open-Meteo air quality forecast (CAMS model)",
+  timezone: "Asia/Kolkata",
   timestamp: "2026-11-20T12:00:00+05:30",
   freshness: "current",
   aqi: 120,
@@ -161,7 +162,9 @@ test("keeps search and location controls within a phone-width viewport", async (
     }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "My location" })).toBeVisible();
-  const pageWidth = await page.locator("body").evaluate((body) => body.scrollWidth);
+  const pageWidth = await page
+    .locator("body")
+    .evaluate((body) => body.scrollWidth);
   expect(pageWidth).toBeLessThanOrEqual(360);
 });
 

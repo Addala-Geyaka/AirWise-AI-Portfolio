@@ -8,18 +8,21 @@ import {
   YAxis,
 } from "recharts";
 import type { ForecastPoint } from "../types/air";
+import { formatHour, formatTime } from "../lib/format";
 
 export default function TrendChart({
   forecast,
+  timezone,
 }: {
   forecast: ForecastPoint[];
+  timezone?: string | null;
 }) {
   const data = forecast
     .filter((point) => point.aqi !== null)
     .map((point) => ({
-      time: new Date(point.time).toLocaleTimeString([], { hour: "numeric" }),
+      time: formatHour(point.time, timezone),
       aqi: point.aqi,
-      fullTime: new Date(point.time).toLocaleString(),
+      fullTime: formatTime(point.time, timezone),
     }));
   if (data.length === 0)
     return <div className="chart-empty">Forecast values are unavailable.</div>;

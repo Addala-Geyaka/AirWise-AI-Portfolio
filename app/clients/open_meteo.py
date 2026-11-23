@@ -48,6 +48,8 @@ class HourlyAir(UpstreamModel):
 class AirPayload(UpstreamModel):
     """Air quality API payload subset."""
 
+    timezone: str | None = Field(default=None, max_length=80)
+    utc_offset_seconds: int | None = Field(default=None, ge=-86399, le=86399)
     current: CurrentAir | None = None
     hourly: HourlyAir | None = None
 
@@ -155,6 +157,11 @@ class OpenMeteoClient:
                 response = await self._client.get(url, params=params)
                 response.raise_for_status()
                 return response.json()
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+                retryable = status in {408, 429} or status >= 500
+                if not retryable or attempt + 1 == self._attempts:
+                    raise UpstreamError("An upstream service could not be reached.") from exc
             except (httpx.HTTPError, ValueError) as exc:
                 if attempt + 1 == self._attempts:
                     raise UpstreamError("An upstream service could not be reached.") from exc

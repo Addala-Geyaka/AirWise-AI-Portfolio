@@ -7,6 +7,7 @@ const baseAir: AirQuality = {
   latitude: 12.9,
   longitude: 77.5,
   source: "Open-Meteo",
+  timezone: "Asia/Kolkata",
   timestamp: new Date().toISOString(),
   freshness: "current",
   aqi: 120,

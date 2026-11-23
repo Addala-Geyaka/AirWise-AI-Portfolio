@@ -50,7 +50,7 @@ function AppRoutes() {
   }, []);
   const air = useQuery({
     queryKey: ["air-quality", place.latitude, place.longitude, refreshNumber],
-    queryFn: () => fetchAirQuality(place, refreshNumber > 0),
+    queryFn: ({ signal }) => fetchAirQuality(place, refreshNumber > 0, signal),
   });
 
   return (

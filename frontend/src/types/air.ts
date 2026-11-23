@@ -41,6 +41,7 @@ export const AirQualitySchema = z.object({
   latitude: z.number(),
   longitude: z.number(),
   source: z.string(),
+  timezone: z.string().nullable(),
   timestamp: z.string().nullable(),
   freshness: z.enum(["current", "stale", "unavailable"]),
   aqi: z.number().nullable(),

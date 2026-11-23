@@ -1,27 +1,43 @@
-# AirWise AI Repository Audit
+# AirWise AI Engineering Audit
 
 ## Scope
 
-Reviewed the supplied workspace before implementation. The workspace contained no application files and no Git repository, so this is a baseline audit of the missing repository rather than a review of existing code.
+Reviewed the existing React/TypeScript frontend, FastAPI backend, upstream clients, schemas, state and data flow, tests, CI, security documentation, and feature pages. The application was already present and functional; the former audit incorrectly described an empty workspace and has been replaced with findings from the current source.
 
-## Findings, ranked by expected score impact
+## Findings and remediation
 
-| Rank | Dimension | Gap | Evidence | Impact |
-|---|---|---|---|---|
-| 1 | Problem alignment | No product or modules exist. | Empty workspace | Critical |
-| 2 | Security | No API, settings, validation, CORS policy, or security controls exist. | Empty workspace | Critical |
-| 3 | Code quality | No application structure, typing, linting, dependency pins, or contributor checks exist. | Empty workspace | Critical |
-| 4 | Efficiency | No upstream clients, parallel fetches, cache, or frontend performance strategy exist. | Empty workspace | High |
-| 5 | Testing | No tests or CI gates exist. | Empty workspace | High |
-| 6 | Accessibility | No interface exists to review for keyboard use, contrast, responsive behavior, or assistive technology. | Empty workspace | High |
+| Priority | Finding before changes | Remediation |
+|---|---|---|
+| High | The backend coordinate cache had no entry limit, so browsing many locations could grow process memory indefinitely. A rounded-coordinate cache hit also returned the first request's coordinates. | Use a monotonic-clock TTL and a 256-entry LRU bound. Refresh the returned place name and coordinates for each request. |
+| High | `asyncio.gather(return_exceptions=True)` allowed a cancelled required air-data task to be converted into an ordinary service error. | Preserve cancellation and other non-application `BaseException` signals; continue treating ordinary weather errors as optional missing context. |
+| Medium | The Open-Meteo retry loop retried permanent 4xx responses, adding delay and upstream load without a likely recovery. | Retry only 408, 429, 5xx, transport failures, and malformed JSON; return a sanitized error immediately for other 4xx responses. |
+| Medium | The planner and progress pages duplicated completed-action state updates despite an existing shared immutable helper. | Both pages now use `toggleCompletedAction`. |
+| Medium | Air-quality and planner queries did not pass TanStack Query's abort signal to `fetch`, so obsolete requests could continue after their query was abandoned. | Thread the signal through the shared API reader to the browser request. |
+| High | Source-local timestamps were compared as if they used the server timezone, and browser formatting used the viewer's timezone even when another city was selected. | Preserve the provider's timezone and UTC offset, make naive source timestamps explicit, and format readings and forecast times in the selected location's timezone. |
+| High | The edited `.env.example` contained a populated Gemini credential-like value. | Cleared the sample value. If it was an active credential, rotate it; clearing the sample does not revoke it. The Supabase URL and publishable key remain in the frontend example because those are public client configuration. |
 
-## Audit limits
+## Tests added
 
-The brief names Dashboard, Family Profile, AI Routine Planner, Indoor Air Lab, Sustainable Alternatives, What-If Simulator, and Progress Center, but the detailed module specification was not included. This implementation uses evidence-based, conservative first-version defaults and makes missing or stale data explicit. Numeric outputs are labeled as estimates and never presented as health claims.
+- Backend: assert cached coordinates match the current request, LRU eviction stays bounded, cancellation propagates, permanent 4xx responses are not retried, and naive source-local timestamps use the provider's UTC offset.
+- Frontend: assert request cancellation reaches `fetch`, malformed API responses fail schema validation, and times render in the selected location's timezone.
 
-## Remediation order
+## Architecture and security review
 
-1. Build the user-facing experience and its resilient data states.
-2. Establish typed backend boundaries, fixed upstream hosts, strict input schemas, safe errors, and security headers.
-3. Add shared upstream clients, parallel retrieval, coordinate-keyed TTL caching, and deterministic domain rules.
-4. Add lint, type, test, build, audit, and documentation gates with traceability.
+- API keys are loaded into the server-side Gemini client; the browser API boundary validates responses with Zod.
+- Public request schemas bound coordinates, names, and planner payloads; routes return generic upstream errors.
+- CORS uses an explicit configured origin list, and the API applies security headers, request-size checks, and rate limits.
+- Frontend routes are lazy loaded; AQI and weather are requested concurrently; place search is debounced; the chart is split from the initial bundle.
+- Completed-action and location preferences are validated before use and remain local to the browser.
+- Existing accessibility support includes semantic page structure, a skip link, labeled controls, visible data states, reduced-motion styles, a forecast table, and browser axe checks. This audit did not find a demonstrated accessibility regression requiring a UI redesign.
+
+## Remaining limits
+
+- The bounded cache is process-local. It is not shared across workers or deployment replicas, and equivalent simultaneous cache misses are not coalesced.
+- The request body cap rejects oversized declared `Content-Length` values; chunked requests need a streaming limit if the API later accepts larger bodies.
+- Production deployment still needs exact frontend/API hosts in CORS and Content Security Policy configuration, as documented in `docs/SECURITY.md`.
+- The optional multi-factor activity-window feature was not added. The backend currently has hourly AQI but only current weather, so hourly temperature, humidity, and wind inputs are not available for a transparent forecast-window recommendation.
+- The supplied 96.90/100 evaluation score was not measured again. No new score is claimed.
+
+## Validation
+
+See `docs/QUALITY.md` for the checks run in this workspace and any host-specific limitations.

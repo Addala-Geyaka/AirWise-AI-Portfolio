@@ -2,6 +2,7 @@ import { CheckCheck, Circle, ListChecks } from "lucide-react";
 import PageHeading from "../../components/PageHeading";
 import Panel from "../../components/Panel";
 import { useAppContext } from "../../app/AppContext";
+import { toggleCompletedAction } from "../../lib/preferences";
 import { buildRoutine } from "../planner/rules";
 
 export default function ProgressPage() {
@@ -56,14 +57,9 @@ export default function ProgressPage() {
                   type="checkbox"
                   checked={checked}
                   onChange={() =>
-                    setPreferences({
-                      ...preferences,
-                      completedActions: checked
-                        ? preferences.completedActions.filter(
-                            (id) => id !== action.id,
-                          )
-                        : [...preferences.completedActions, action.id],
-                    })
+                    setPreferences(
+                      toggleCompletedAction(preferences, action.id),
+                    )
                   }
                 />
                 {checked ? <CheckCheck size={18} /> : <Circle size={18} />}

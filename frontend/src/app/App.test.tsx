@@ -10,6 +10,7 @@ const airData = {
   latitude: 12.9716,
   longitude: 77.5946,
   source: "Open-Meteo air quality forecast (CAMS model)",
+  timezone: "Asia/Kolkata",
   timestamp: new Date().toISOString(),
   freshness: "current",
   aqi: 42,

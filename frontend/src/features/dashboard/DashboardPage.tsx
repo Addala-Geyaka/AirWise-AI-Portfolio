@@ -134,7 +134,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="source-line">
                     <span>Updated</span>
-                    {formatTime(result.timestamp)}
+                    {formatTime(result.timestamp, result.timezone)}
                   </div>
                 </div>
               </div>
@@ -210,7 +210,10 @@ export default function DashboardPage() {
                   </div>
                 }
               >
-                <TrendChart forecast={result.forecast} />
+                <TrendChart
+                  forecast={result.forecast}
+                  timezone={result.timezone}
+                />
               </Suspense>
               <p className="panel-footnote">
                 Forecast values are modelled, not station measurements.

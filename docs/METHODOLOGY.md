@@ -2,7 +2,7 @@
 
 ## Air quality
 
-AirWise requests the source-provided `us_aqi` and pollutant fields from Open-Meteo. It displays source values without recalculating or interpolating missing pollutant measurements. The provider describes these as model forecasts with CAMS input, not local monitor readings. The source timestamp is returned as provided and shown in the dashboard. Values older than three hours are labeled stale; absent values are labeled unavailable.
+AirWise requests the source-provided `us_aqi` and pollutant fields from Open-Meteo. It displays source values without recalculating or interpolating missing pollutant measurements. The provider describes these as model forecasts with CAMS input, not local monitor readings. The source timestamp, UTC offset, and timezone are preserved; naive source timestamps use the provider's offset for freshness checks, and the interface formats times in the selected location's timezone. Values older than three hours are labeled stale; absent values are labeled unavailable.
 
 The AQI descriptor bands are centralized in `app/domain/factors.py` and follow the US EPA table: Good 0–50, Moderate 51–100, Unhealthy for Sensitive Groups 101–150, Unhealthy 151–200, Very Unhealthy 201–300, and Hazardous 301–500. AQI outside the supported range is unavailable.
 

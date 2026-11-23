@@ -1,10 +1,12 @@
 """Orchestrate parallel upstream requests and deterministic air quality rules."""
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+from collections import OrderedDict
+from datetime import UTC, datetime, timedelta, timezone
+from time import monotonic
 from typing import Literal
 
-from app.clients.open_meteo import OpenMeteoClient
+from app.clients.open_meteo import AirPayload, CurrentWeather, OpenMeteoClient
 from app.domain.safety import aqi_category
 from app.schemas.air_quality import AirQualityResponse, ForecastPoint, Pollutant
 
@@ -26,6 +28,7 @@ POLLUTANT_DETAILS: tuple[tuple[PollutantKey, str, str], ...] = (
 )
 SOURCE = "Open-Meteo air quality forecast (CAMS model)"
 STALE_AFTER = timedelta(hours=3)
+DEFAULT_CACHE_MAX_ENTRIES = 256
 
 
 class ServiceUnavailable(RuntimeError):
@@ -35,10 +38,18 @@ class ServiceUnavailable(RuntimeError):
 class AirQualityService:
     """Return validated conditions with a small coordinate-based TTL cache."""
 
-    def __init__(self, client: OpenMeteoClient, cache_ttl_seconds: int = 600) -> None:
+    def __init__(
+        self,
+        client: OpenMeteoClient,
+        cache_ttl_seconds: int = 600,
+        cache_max_entries: int = DEFAULT_CACHE_MAX_ENTRIES,
+    ) -> None:
         self._client = client
         self._cache_ttl = cache_ttl_seconds
-        self._cache: dict[tuple[float, float], tuple[datetime, AirQualityResponse]] = {}
+        self._cache_max_entries = max(1, cache_max_entries)
+        self._cache: OrderedDict[tuple[float, float], tuple[float, AirQualityResponse]] = (
+            OrderedDict()
+        )
 
     async def get_conditions(
         self,
@@ -50,24 +61,39 @@ class AirQualityService:
         """Get air and weather together, bypassing the TTL cache when requested."""
         key = (round(latitude, 2), round(longitude, 2))
         cached = self._cache.get(key)
-        if (
-            not force_refresh
-            and cached
-            and datetime.now(UTC) - cached[0] < timedelta(seconds=self._cache_ttl)
-        ):
-            return cached[1].model_copy(update={"place_name": place_name})
+        if cached is not None and not force_refresh:
+            created_at, response = cached
+            if monotonic() - created_at < self._cache_ttl:
+                self._cache.move_to_end(key)
+                return response.model_copy(
+                    update={
+                        "place_name": place_name,
+                        "latitude": latitude,
+                        "longitude": longitude,
+                    }
+                )
+            self._cache.pop(key)
         air, weather = await asyncio.gather(
             self._client.fetch_air(latitude, longitude),
             self._client.fetch_weather(latitude, longitude),
             return_exceptions=True,
         )
-        if isinstance(air, Exception):
-            raise ServiceUnavailable("Air quality data is not available.") from air
-        if isinstance(weather, asyncio.CancelledError):
-            raise weather
-        weather_current = None if isinstance(weather, BaseException) else weather.current
+        if isinstance(air, BaseException):
+            if isinstance(air, Exception):
+                raise ServiceUnavailable("Air quality data is not available.") from air
+            raise air
+        if isinstance(weather, BaseException):
+            if isinstance(weather, Exception):
+                weather_current = None
+            else:
+                raise weather
+        else:
+            weather_current = weather.current
         response = self._build_response(latitude, longitude, place_name, air, weather_current)
-        self._cache[key] = (datetime.now(UTC), response)
+        self._cache[key] = (monotonic(), response)
+        self._cache.move_to_end(key)
+        while len(self._cache) > self._cache_max_entries:
+            self._cache.popitem(last=False)
         return response
 
     @staticmethod
@@ -75,19 +101,15 @@ class AirQualityService:
         latitude: float,
         longitude: float,
         place_name: str,
-        air: object,
-        weather: object,
+        air: AirPayload,
+        weather: CurrentWeather | None,
     ) -> AirQualityResponse:
         """Translate source payload models into the public response contract."""
-        from app.clients.open_meteo import AirPayload, CurrentWeather
-
-        if not isinstance(air, AirPayload):
-            raise ServiceUnavailable("Air quality data is not available.")
         current = air.current
         aqi = current.us_aqi if current else None
         category = aqi_category(aqi)
-        freshness = "unavailable"
-        timestamp = current.time if current else None
+        freshness: Literal["current", "stale", "unavailable"] = "unavailable"
+        timestamp = _apply_source_offset(current.time, air.utc_offset_seconds) if current else None
         if timestamp is not None:
             age = datetime.now(UTC) - timestamp.astimezone(UTC)
             freshness = "stale" if age > STALE_AFTER else "current"
@@ -97,33 +119,44 @@ class AirQualityService:
             )
             for key, label, unit in POLLUTANT_DETAILS
         ]
-        forecast = AirQualityService._forecast_points(air)
-        current_weather = weather if isinstance(weather, CurrentWeather) else None
         return AirQualityResponse(
             place_name=place_name,
             latitude=latitude,
             longitude=longitude,
             source=SOURCE,
+            timezone=air.timezone,
             timestamp=timestamp,
-            freshness=freshness,  # type: ignore[arg-type]
+            freshness=freshness,
             aqi=aqi,
             aqi_category=category[0] if category else None,
             aqi_color=category[1] if category else None,
             pollutants=pollutants,
-            forecast=forecast,
-            temperature_c=current_weather.temperature_2m if current_weather else None,
-            humidity_percent=current_weather.relative_humidity_2m if current_weather else None,
-            wind_speed_kmh=current_weather.wind_speed_10m if current_weather else None,
+            forecast=AirQualityService._forecast_points(air),
+            temperature_c=weather.temperature_2m if weather else None,
+            humidity_percent=weather.relative_humidity_2m if weather else None,
+            wind_speed_kmh=weather.wind_speed_10m if weather else None,
         )
 
     @staticmethod
-    def _forecast_points(air: object) -> list[ForecastPoint]:
+    def _forecast_points(air: AirPayload) -> list[ForecastPoint]:
         """Pair source forecast timestamps and AQI values without extrapolation."""
-        from app.clients.open_meteo import AirPayload
-
-        if not isinstance(air, AirPayload) or air.hourly is None:
+        if air.hourly is None:
             return []
         return [
-            ForecastPoint(time=time, aqi=air.hourly.us_aqi[index])
-            for index, time in enumerate(air.hourly.time[: len(air.hourly.us_aqi)])
+            ForecastPoint(
+                time=_apply_source_offset(time, air.utc_offset_seconds),
+                aqi=aqi,
+            )
+            for time, aqi in zip(air.hourly.time, air.hourly.us_aqi, strict=False)
         ]
+
+
+def _apply_source_offset(value: datetime, offset_seconds: int | None) -> datetime:
+    """Make a naive provider timestamp independent of the server's local timezone."""
+    if value.tzinfo is not None:
+        return value
+    try:
+        source_timezone = timezone(timedelta(seconds=offset_seconds or 0))
+    except ValueError:
+        source_timezone = UTC
+    return value.replace(tzinfo=source_timezone)

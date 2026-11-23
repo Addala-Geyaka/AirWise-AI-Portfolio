@@ -2,7 +2,7 @@
 
 ## Request flow
 
-The browser requests typed API data. FastAPI validates query bounds, and route handlers pass only validated values to the service layer. `AirQualityService` fetches air data and weather concurrently through the one shared async HTTP client. The air payload is required for a dashboard response; weather may be unavailable without hiding valid air data. The optional planner endpoint sends only current AQI and forecast numbers to Gemini, then validates and bounds the returned text. If Gemini is not configured or unavailable, it returns deterministic summary text.
+The browser requests typed API data. FastAPI validates query bounds, and route handlers pass only validated values to the service layer. `AirQualityService` fetches air data and weather concurrently through the one shared async HTTP client. The air payload is required for a dashboard response; weather may be unavailable without hiding valid air data. Source timezone and UTC offset accompany timestamps so freshness checks and browser displays use the selected location's time. The optional planner endpoint sends only current AQI and forecast numbers to Gemini, then validates and bounds the returned text. If Gemini is not configured or unavailable, it returns deterministic summary text.
 
 ## Backend map
 

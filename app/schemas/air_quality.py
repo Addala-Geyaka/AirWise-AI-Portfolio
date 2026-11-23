@@ -56,6 +56,7 @@ class AirQualityResponse(StrictModel):
     latitude: float
     longitude: float
     source: str
+    timezone: str | None
     timestamp: datetime | None
     freshness: Literal["current", "stale", "unavailable"]
     aqi: float | None

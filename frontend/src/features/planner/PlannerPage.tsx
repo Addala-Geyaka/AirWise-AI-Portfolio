@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import PageHeading from "../../components/PageHeading";
 import Panel from "../../components/Panel";
 import { useAppContext } from "../../app/AppContext";
+import { toggleCompletedAction } from "../../lib/preferences";
 import { buildRoutine } from "./rules";
 import { fetchPlannerBrief } from "../../lib/api";
 
@@ -21,7 +22,7 @@ export default function PlannerPage() {
       air.data?.longitude,
       air.data?.aqi,
     ],
-    queryFn: () => fetchPlannerBrief(air.data!),
+    queryFn: ({ signal }) => fetchPlannerBrief(air.data!, signal),
     enabled: air.data !== undefined,
     staleTime: 10 * 60 * 1000,
     retry: false,
@@ -98,14 +99,9 @@ export default function PlannerPage() {
                     type="checkbox"
                     checked={checked}
                     onChange={() =>
-                      setPreferences({
-                        ...preferences,
-                        completedActions: checked
-                          ? preferences.completedActions.filter(
-                              (id) => id !== action.id,
-                            )
-                          : [...preferences.completedActions, action.id],
-                      })
+                      setPreferences(
+                        toggleCompletedAction(preferences, action.id),
+                      )
                     }
                   />
                   <span className="action-check">

@@ -2,6 +2,7 @@ import { CircleHelp, Fan, ShieldAlert, Wind } from "lucide-react";
 import PageHeading from "../../components/PageHeading";
 import Panel from "../../components/Panel";
 import { useAppContext } from "../../app/AppContext";
+import { formatTime } from "../../lib/format";
 
 function ventilationGuidance(aqi: number | null | undefined): string {
   if (aqi === null || aqi === undefined)
@@ -43,7 +44,7 @@ export default function IndoorPage() {
                 : Math.round(aqi)}
             </strong>
             {air.data?.timestamp
-              ? ` · source time ${new Date(air.data.timestamp).toLocaleString()}`
+              ? ` · source time ${formatTime(air.data.timestamp, air.data.timezone)}`
               : ""}
           </p>
           <div className="source-note">

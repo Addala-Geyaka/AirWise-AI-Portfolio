@@ -2,18 +2,23 @@
 
 ## Gates
 
+Checks run in this workspace on Windows with Python 3.14.8 and the installed Node toolchain.
+
 | Gate | Command | Result |
 |---|---|---|
-| Python lint and formatting | `ruff check app tests` and `ruff format --check app tests` | Pass locally. |
-| Python strict typing | `mypy app` | Pass locally across 23 source files. |
-| Backend unit and coverage | `pytest --cov=app --cov-branch --cov-fail-under=90` | Blocked during collection: Windows Application Control denies loading `pydantic_core` from this workspace. The 22 pure safety/domain tests pass; the planner tests are present but hit the same collection block. |
-| Frontend lint and formatting | `npm run lint` and `npm run format:check` | Pass locally. |
-| Frontend strict typing | `npm run typecheck` | Pass locally; also runs as part of the production build. |
-| Frontend unit and axe tests | `npm test` | Pass: 9 tests in 3 files. jsdom skips canvas-based contrast math; full WCAG contrast checks run in Chromium. |
-| Browser journey and axe | `npm run test:e2e -- --workers=1` | Pass: 6 Chromium tests cover global city/state/country search, location/map, account setup, planner persistence, phone-width layout, and WCAG axe checks. |
-| Production bundle | `npm run build` and `npm run check:bundle` | Pass. Entry JavaScript is 101.7 KB gzip, below the 250 KB budget; the chart is lazy loaded. |
-| NPM dependency audit | `npm install @supabase/supabase-js` | Install audit reported zero vulnerabilities across 373 packages. A separate `npm audit` refresh could not reach registry.npmjs.org. |
-| Python package audit | `pip-audit` | Latest completed scan found no known vulnerabilities in PyPI packages; the local project is not published on PyPI and is skipped. |
+| Python lint and formatting | `ruff check app tests` and `ruff format --check app tests` | Pass. All 30 Python files are formatted. |
+| Python strict typing | `mypy app` | Pass across 24 source files. |
+| Backend tests and coverage | `pytest --cov=app --cov-branch --cov-fail-under=90` | Pass: 63 tests; 95.28% branch coverage. The run reports deprecation warnings from the installed Starlette TestClient/httpx integration and SlowAPI under Python 3.14. |
+| Frontend lint and formatting | `npm run lint` and `npm run format:check` | Pass. |
+| Frontend strict typing | `npm run typecheck` | Pass. |
+| Frontend unit tests | `npm test` | Pass: 13 tests in 5 files. jsdom logs its expected unsupported canvas diagnostic from axe-core; Chromium runs the full accessibility check. |
+| Browser journeys and axe | `npm run test:e2e -- --workers=1` | All 6 Chromium cases reported passed, covering search, location/map, planner persistence, account setup, phone-width layout, and axe. The Playwright process did not exit after reporting the results in this Windows sandbox and was interrupted, so a clean process exit was not captured. |
+| Production build | `npm run build` | Pass. Vite warns about the raw-size main chunk and dependency annotations; the gzip budget below passes and the chart remains split into its own chunk. |
+| Bundle budget | `npm run check:bundle` | Pass: entry JavaScript is 160.7 KB gzipped, below the 250 KB limit. |
+| NPM dependency audit | `npm audit --audit-level=high` | Pass: zero vulnerabilities found. |
+| Python dependency audit | `pip-audit` | No known vulnerabilities found in installed PyPI dependencies. The local `airwise-ai` project is not published to PyPI and was skipped. |
+
+The project supports Python 3.12 and later; the local backend run used Python 3.14.8. Re-run CI on Python 3.12 to verify the declared minimum version independently.
 
 ## Product scope
 
@@ -22,4 +27,3 @@
 - Global geocoding requests up to 100 matches for each search and shows administrative and country context; it is an online search, not a packaged offline gazetteer.
 - Air quality and weather readings come from Open-Meteo. When source data is stale or unavailable, the interface labels that state and provides a safe fallback.
 - The indoor page gives general guidance and does not claim to read an indoor sensor. The simulator compares forecast timing and does not estimate personal exposure or health outcomes.
-- The full backend coverage gate still needs to run in an environment where Windows Application Control allows the Pydantic native extension to load.

@@ -18,9 +18,9 @@ Deliver a responsive urban air quality app that helps people understand modelled
 
 ## Quality status
 
-- Frontend: lint, formatting, strict typing, 9 unit tests, 6 Chromium E2E checks (including axe and phone-width layout), production build, and the 250 KB gzip entry budget pass. Current entry JavaScript is 101.7 KB gzip.
-- Python: Ruff formatting/lint and mypy strict pass; 22 pure safety/domain tests pass.
-- The complete backend collection/coverage gate is blocked on this Windows host because Application Control prevents the Pydantic native extension from loading from the workspace. See [docs/QUALITY.md](docs/QUALITY.md).
+- Frontend: lint, formatting, strict typing, 13 unit tests, 6 Chromium E2E assertions, production build, and the 250 KB gzip entry budget pass. Current entry JavaScript is 160.7 KB gzip; the Playwright process did not exit cleanly after reporting all cases passed on this Windows host. See [docs/QUALITY.md](docs/QUALITY.md).
+- Python: Ruff formatting/lint and mypy strict pass; 63 tests pass at 95.28% branch coverage.
+- `npm audit` found zero vulnerabilities. `pip-audit` found no known vulnerabilities in installed PyPI dependencies; the local project is not published on PyPI.
 
 ## Scope decisions
 

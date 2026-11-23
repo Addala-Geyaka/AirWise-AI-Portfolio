@@ -21,9 +21,13 @@ async function readJson<T>(
   return schema.parse(await response.json());
 }
 
-export function fetchPlannerBrief(air: AirQuality): Promise<PlannerBrief> {
+export function fetchPlannerBrief(
+  air: AirQuality,
+  signal?: AbortSignal,
+): Promise<PlannerBrief> {
   return readJson("/api/v1/planner/brief", PlannerBriefSchema, {
     method: "POST",
+    signal,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       aqi: air.aqi,
@@ -48,6 +52,7 @@ export async function searchPlaces(
 export async function fetchAirQuality(
   place: Place,
   forceRefresh = false,
+  signal?: AbortSignal,
 ): Promise<AirQuality> {
   const parts = [
     place.name,
@@ -74,5 +79,7 @@ export async function fetchAirQuality(
     place_name: placeName,
   });
   if (forceRefresh) params.set("force_refresh", "true");
-  return readJson(`/api/v1/air-quality?${params}`, AirQualitySchema);
+  return readJson(`/api/v1/air-quality?${params}`, AirQualitySchema, {
+    signal,
+  });
 }

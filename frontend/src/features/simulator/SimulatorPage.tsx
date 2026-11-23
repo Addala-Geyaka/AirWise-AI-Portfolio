@@ -47,7 +47,7 @@ export default function SimulatorPage() {
               >
                 {choices.map((point) => (
                   <option value={point.time} key={point.time}>
-                    {formatTime(point.time)}
+                    {formatTime(point.time, air.data?.timezone)}
                   </option>
                 ))}
               </select>
@@ -79,7 +79,9 @@ export default function SimulatorPage() {
                   : Math.round(selected.aqi)}
               </strong>
               <small>
-                {selected ? formatTime(selected.time) : "No forecast selected"}
+                {selected
+                  ? formatTime(selected.time, air.data?.timezone)
+                  : "No forecast selected"}
               </small>
             </div>
           </div>
@@ -87,7 +89,8 @@ export default function SimulatorPage() {
             <div className="forecast-callout">
               <Clock3 size={16} />
               <span>
-                Source forecast for {formatTime(selected.time)}. Values are
+                Source forecast for{" "}
+                {formatTime(selected.time, air.data?.timezone)}. Values are
                 modelled estimates, not monitor observations.
               </span>
             </div>
@@ -102,7 +105,9 @@ export default function SimulatorPage() {
           </p>
           <div className="source-note">
             Source: {air.data?.source ?? "Not available"}
-            {air.data?.timestamp ? ` · ${formatTime(air.data.timestamp)}` : ""}
+            {air.data?.timestamp
+              ? ` · ${formatTime(air.data.timestamp, air.data.timezone)}`
+              : ""}
           </div>
         </Panel>
       </div>
