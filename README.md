@@ -94,7 +94,8 @@ Open `http://localhost:5173` and leave both windows running.
 ```powershell
 python -m ruff check app tests
 python -m mypy app
-python -m pytest --cov=app --cov-branch --cov-fail-under=90
+python -m coverage run -m pytest
+python -m coverage report --fail-under=90
 cd frontend
 npm run lint
 npm run format:check

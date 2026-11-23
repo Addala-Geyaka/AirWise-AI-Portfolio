@@ -4,7 +4,8 @@ dev:
 	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
-	pytest --cov=app --cov-branch --cov-report=term-missing --cov-fail-under=90
+	python -m coverage run -m pytest
+	python -m coverage report --fail-under=90
 
 lint:
 	ruff check app tests

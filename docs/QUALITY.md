@@ -8,7 +8,7 @@ Checks run in this workspace on Windows with Python 3.14.8 and the installed Nod
 |---|---|---|
 | Python lint and formatting | `ruff check app tests` and `ruff format --check app tests` | Pass. All 30 Python files are formatted. |
 | Python strict typing | `mypy app` | Pass across 24 source files. |
-| Backend tests and coverage | `pytest --cov=app --cov-branch --cov-fail-under=90` | Pass: 63 tests; 95.28% branch coverage. The run reports deprecation warnings from the installed Starlette TestClient/httpx integration and SlowAPI under Python 3.14. |
+| Backend tests and coverage | `python -m coverage run -m pytest`, then `python -m coverage report --fail-under=90` | Pass: 63 tests; 95.28% branch coverage. CI runs coverage directly because pytest-cov reported no collected data on the GitHub runner despite all tests passing. The run reports deprecation warnings from the installed Starlette TestClient/httpx integration and SlowAPI under Python 3.14. |
 | Frontend lint and formatting | `npm run lint` and `npm run format:check` | Pass. |
 | Frontend strict typing | `npm run typecheck` | Pass. |
 | Frontend unit tests | `npm test` | Pass: 13 tests in 5 files. jsdom logs its expected unsupported canvas diagnostic from axe-core; Chromium runs the full accessibility check. |

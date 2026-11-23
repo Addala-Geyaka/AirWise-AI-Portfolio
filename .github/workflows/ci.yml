@@ -17,7 +17,8 @@ jobs:
       - run: ruff format --check app tests
       - run: ruff check app tests
       - run: mypy app
-      - run: pytest --cov=app --cov-branch --cov-report=term-missing --cov-fail-under=90
+      - run: python -m coverage run -m pytest
+      - run: python -m coverage report --fail-under=90
       - run: pip-audit
 
   frontend:
