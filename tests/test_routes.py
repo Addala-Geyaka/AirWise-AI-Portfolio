@@ -4,6 +4,7 @@ import asyncio
 from datetime import UTC, datetime
 
 import httpx
+import pytest
 import respx
 from fastapi.testclient import TestClient
 from starlette.requests import Request
@@ -113,6 +114,20 @@ def test_request_body_size_limit() -> None:
     with TestClient(app) as client:
         response = client.post("/health", headers={"content-length": "20000"}, content=b"")
     assert response.status_code == 413
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+@pytest.mark.parametrize("content_length", ["invalid", "-1"])
+@respx.mock
+def test_invalid_content_length_is_rejected_with_security_headers(
+    content_length: str,
+) -> None:
+    """Malformed declared sizes are rejected before routing."""
+    with TestClient(app) as client:
+        response = client.get("/health", headers={"content-length": content_length})
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Invalid request length."}
+    assert response.headers["x-content-type-options"] == "nosniff"
 
 
 @respx.mock

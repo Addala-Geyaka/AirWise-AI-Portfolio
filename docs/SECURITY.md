@@ -11,7 +11,7 @@
 | Browser storage tampering | Versioned Zod schemas; invalid values fall back to defaults. |
 | Cross-origin access | CORS uses a configured explicit origin list and excludes `*`. |
 | Request floods | SlowAPI applies 30/minute route limits and a 120/minute default. |
-| Oversized declared requests | Middleware rejects bodies whose declared `Content-Length` exceeds the configured cap. Planner POST bodies are also schema-bounded. |
+| Oversized requests | Middleware rejects bodies over the configured cap while reading the ASGI request stream, including requests without a declared `Content-Length`. Planner POST bodies are also schema-bounded. |
 | Browser script injection | No `dangerouslySetInnerHTML`; Vercel CSP does not allow inline scripts. |
 | Sensitive logs | The application does not log user preferences, search strings, or response bodies. Request IDs are generated server-side. |
 | Unsafe browser capabilities | Camera and microphone are disabled, geolocation requires same-origin permission, and framing is blocked. |
@@ -23,7 +23,7 @@ Keep `APP_GEMINI_API_KEY` in the API environment (`.env` locally, the host secre
 ## Known limits
 
 - Rate limiting and the response cache are process-local; multiple replicas do not share state.
-- The body-size middleware checks the declared length and planner schemas constrain JSON request fields; add streaming body limits if larger payloads are introduced.
+- The body-size middleware buffers at most the configured request limit before routing. Increase that limit only when a route needs larger request payloads.
 - Vercel’s CSP allows `https://*.onrender.com` by default for initial setup. Narrow it to the exact deployed API host before production.
 - `APP_CORS_ORIGINS` must be set to the deployed origin; the local development defaults are not suitable for a public deployment.
 - Add the exact Supabase project host to the deployed CSP `connect-src` if using a custom Supabase domain.

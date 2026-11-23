@@ -1,3 +1,19 @@
+export function uniqueTextParts(
+  values: readonly (string | null | undefined)[],
+): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(trimmed);
+  }
+  return unique;
+}
+
 export function formatTime(
   value: string | null | undefined,
   timezone?: string | null,

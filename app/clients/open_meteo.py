@@ -22,7 +22,7 @@ class UpstreamError(RuntimeError):
 class UpstreamModel(BaseModel):
     """Base model for documented upstream fields while allowing API additions."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", allow_inf_nan=False)
 
 
 class CurrentAir(UpstreamModel):

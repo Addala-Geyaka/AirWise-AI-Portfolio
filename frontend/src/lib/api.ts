@@ -5,6 +5,7 @@ import {
   type Place,
 } from "../types/air";
 import { PlannerBriefSchema, type PlannerBrief } from "../types/plan";
+import { uniqueTextParts } from "./format";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -54,23 +55,13 @@ export async function fetchAirQuality(
   forceRefresh = false,
   signal?: AbortSignal,
 ): Promise<AirQuality> {
-  const parts = [
+  const placeName = uniqueTextParts([
     place.name,
     place.district,
     place.city,
     place.admin1,
     place.country,
-  ].filter(
-    (value): value is string => typeof value === "string" && value.length > 0,
-  );
-  const placeName = parts
-    .filter(
-      (value, index) =>
-        parts.findIndex(
-          (candidate) =>
-            candidate.toLocaleLowerCase() === value.toLocaleLowerCase(),
-        ) === index,
-    )
+  ])
     .join(", ")
     .slice(0, 100);
   const params = new URLSearchParams({

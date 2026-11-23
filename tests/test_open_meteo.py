@@ -96,6 +96,24 @@ async def test_invalid_timezone_metadata_is_rejected() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_non_finite_air_values_are_rejected() -> None:
+    """Malformed numeric provider data is rejected instead of reaching JSON output."""
+    respx.get(AIR_QUALITY_URL).mock(
+        return_value=httpx.Response(
+            200,
+            content=(
+                '{"current":{"time":"' + datetime.now(UTC).isoformat() + '","us_aqi":NaN}}'
+            ).encode(),
+            headers={"content-type": "application/json"},
+        )
+    )
+    async with httpx.AsyncClient() as http:
+        with pytest.raises(UpstreamError, match="Air response did not match its schema"):
+            await OpenMeteoClient(http).fetch_air(12, 77)
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_upstream_error_retries_then_returns_safe_error() -> None:
     """Transient HTTP errors retry a bounded number of times."""
     route = respx.get(GEOCODING_URL).mock(return_value=httpx.Response(503))

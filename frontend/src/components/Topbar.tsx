@@ -13,6 +13,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useAppContext } from "../app/AppContext";
 import { searchPlaces } from "../lib/api";
+import { uniqueTextParts } from "../lib/format";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { Place } from "../types/air";
 
@@ -26,19 +27,8 @@ function locationKind(place: Place): string | undefined {
   return code === "LOC" ? "Location" : undefined;
 }
 
-function uniqueParts(values: Array<string | null | undefined>): string[] {
-  const seen = new Set<string>();
-  return values.filter((value): value is string => {
-    if (!value?.trim()) return false;
-    const key = value.trim().toLocaleLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
 function placeLabel(place: Place): string {
-  return uniqueParts([
+  return uniqueTextParts([
     place.name,
     place.district,
     place.city,
@@ -50,7 +40,7 @@ function placeLabel(place: Place): string {
 }
 
 function placeContext(place: Place): string {
-  const context = uniqueParts([
+  const context = uniqueTextParts([
     place.district,
     place.city,
     place.admin1,
@@ -68,6 +58,7 @@ export default function Topbar() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [activeResultIndex, setActiveResultIndex] = useState(-1);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
   const debounced = useDebouncedValue(query.trim(), 550);
@@ -77,11 +68,13 @@ export default function Topbar() {
     enabled: debounced.length >= 2 && open,
     staleTime: 60 * 60 * 1000,
   });
+  const activeResult = results.data?.[activeResultIndex];
 
   function choosePlace(next: Place) {
     setPlace(next);
     setQuery("");
     setOpen(false);
+    setActiveResultIndex(-1);
     setLocationError("");
   }
 
@@ -137,19 +130,50 @@ export default function Topbar() {
           onChange={(event) => {
             setQuery(event.target.value);
             setOpen(true);
+            setActiveResultIndex(-1);
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={(event) => {
-            if (event.key === "Escape") setOpen(false);
-            if (event.key === "Enter" && results.data?.[0]) {
+            if (event.key === "Escape") {
+              setOpen(false);
+              setActiveResultIndex(-1);
+              return;
+            }
+            if (event.key === "ArrowDown" && results.data?.length) {
               event.preventDefault();
-              choosePlace(results.data[0]);
+              setOpen(true);
+              setActiveResultIndex((current) =>
+                current < 0
+                  ? 0
+                  : Math.min(current + 1, results.data.length - 1),
+              );
+            }
+            if (event.key === "ArrowUp" && results.data?.length) {
+              event.preventDefault();
+              setActiveResultIndex((current) =>
+                current <= 0 ? results.data.length - 1 : current - 1,
+              );
+            }
+            if (event.key === "Enter" && open && results.data?.length) {
+              event.preventDefault();
+              const selectedIndex = Math.min(
+                Math.max(activeResultIndex, 0),
+                results.data.length - 1,
+              );
+              choosePlace(results.data[selectedIndex]);
             }
           }}
           placeholder="Search any city, state, country, or postcode…"
           autoComplete="off"
           aria-expanded={open && debounced.length >= 2}
-          aria-controls="city-search-results"
+          aria-controls={
+            open && debounced.length >= 2 ? "city-search-results" : undefined
+          }
+          aria-activedescendant={
+            open && activeResult
+              ? `city-search-option-${activeResultIndex}`
+              : undefined
+          }
           aria-haspopup="listbox"
           aria-autocomplete="list"
         />
@@ -176,12 +200,12 @@ export default function Topbar() {
                 Location search is unavailable right now.
               </div>
             )}
-            {results.data?.map((result) => (
-              <button
-                type="button"
+            {results.data?.map((result, index) => (
+              <div
                 className="search-result"
                 role="option"
-                aria-selected="false"
+                id={`city-search-option-${index}`}
+                aria-selected={index === activeResultIndex}
                 key={`${result.name}-${result.latitude}`}
                 onClick={() => choosePlace(result)}
               >
@@ -190,7 +214,7 @@ export default function Topbar() {
                   <strong>{result.name}</strong>
                   <small>{placeContext(result)}</small>
                 </span>
-              </button>
+              </div>
             ))}
             {results.data?.length === 0 && (
               <div className="search-message">

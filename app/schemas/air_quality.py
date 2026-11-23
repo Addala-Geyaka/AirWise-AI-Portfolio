@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class StrictModel(BaseModel):
     """Base model that rejects unknown fields and implicit coercion."""
 
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
 
 
 class Place(StrictModel):

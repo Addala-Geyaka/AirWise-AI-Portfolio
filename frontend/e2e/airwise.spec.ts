@@ -72,11 +72,17 @@ test("search, personalize, check off an action, and keep it after reload", async
   await expect(
     page.getByRole("heading", { name: "Hello, Bengaluru" }),
   ).toBeVisible();
-  await page
-    .getByRole("combobox", { name: "Search cities, states, or countries" })
-    .fill("Mumbai");
+  const search = page.getByRole("combobox", {
+    name: "Search cities, states, or countries",
+  });
+  await search.fill("Mumbai");
   await expect(page.getByRole("option", { name: /Mumbai/ })).toBeVisible();
-  await page.getByRole("option", { name: /Mumbai/ }).click();
+  await search.press("ArrowDown");
+  await expect(page.getByRole("option", { name: /Mumbai/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await search.press("Enter");
   await expect(
     page.getByRole("heading", { name: "Hello, Mumbai" }),
   ).toBeVisible();

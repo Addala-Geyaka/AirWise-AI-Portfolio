@@ -8,13 +8,13 @@ Checks run in this workspace on Windows with Python 3.14.8 and the installed Nod
 |---|---|---|
 | Python lint and formatting | `ruff check app tests` and `ruff format --check app tests` | Pass. All 30 Python files are formatted. |
 | Python strict typing | `mypy app` | Pass across 24 source files. |
-| Backend tests and coverage | `python -m coverage run -m pytest`, then `python -m coverage report --fail-under=90` | Pass: 63 tests; 95.28% branch coverage. CI runs coverage directly because pytest-cov reported no collected data on the GitHub runner despite all tests passing. The run reports deprecation warnings from the installed Starlette TestClient/httpx integration and SlowAPI under Python 3.14. |
-| Frontend lint and formatting | `npm run lint` and `npm run format:check` | Pass. |
+| Backend tests and coverage | `python -m coverage run -m pytest`, then `python -m coverage report --fail-under=90` | Pass: 69 tests; 96% branch-aware coverage. CI runs coverage directly because pytest-cov reported no collected data on the GitHub runner despite all tests passing. The run reports deprecation warnings from the installed Starlette TestClient/httpx integration and SlowAPI under Python 3.14. |
+| Frontend lint and formatting | `npm run lint` and `npm run format:check` | Pass. Formatting now includes CSS and E2E TypeScript. |
 | Frontend strict typing | `npm run typecheck` | Pass. |
-| Frontend unit tests | `npm test` | Pass: 13 tests in 5 files. jsdom logs its expected unsupported canvas diagnostic from axe-core; Chromium runs the full accessibility check. |
-| Browser journeys and axe | `npm run test:e2e -- --workers=1` | All 6 Chromium cases reported passed, covering search, location/map, planner persistence, account setup, phone-width layout, and axe. The Playwright process did not exit after reporting the results in this Windows sandbox and was interrupted, so a clean process exit was not captured. |
+| Frontend unit tests | `npm test` | Pass: 14 tests in 5 files. jsdom logs its expected unsupported canvas diagnostic from axe-core; Chromium runs the full accessibility check. |
+| Browser journeys and axe | `npm run test:e2e -- --workers=1` | All 6 Chromium cases passed, covering keyboard search, location/map, planner persistence, account setup, phone-width layout, and axe. The Playwright process did not exit after reporting the results in this Windows sandbox and was interrupted, so a clean process exit was not captured. |
 | Production build | `npm run build` | Pass. Vite warns about the raw-size main chunk and dependency annotations; the gzip budget below passes and the chart remains split into its own chunk. |
-| Bundle budget | `npm run check:bundle` | Pass: entry JavaScript is 160.7 KB gzipped, below the 250 KB limit. |
+| Bundle budget | `npm run check:bundle` | Pass: entry JavaScript is 161.0 KB gzipped, below the 250 KB limit. |
 | NPM dependency audit | `npm audit --audit-level=high` | Pass: zero vulnerabilities found. |
 | Python dependency audit | `pip-audit` | No known vulnerabilities found in installed PyPI dependencies. The local `airwise-ai` project is not published to PyPI and was skipped. |
 

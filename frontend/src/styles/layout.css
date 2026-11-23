@@ -187,7 +187,8 @@
   color: #5f6d65;
 }
 .search-result:hover,
-.search-result:focus-visible {
+.search-result:focus-visible,
+.search-result[aria-selected="true"] {
   background: #f1f6f1;
 }
 .search-result span {

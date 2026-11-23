@@ -1,7 +1,10 @@
 """Golden tests for stable AQI bands and guidance rules."""
 
 import pytest
+from starlette.types import Message, Receive, Scope, Send
 
+from app.core.config import Settings
+from app.core.middleware import SecurityHeadersMiddleware
 from app.domain.safety import aqi_category, daily_guidance, safe_ventilation_guidance
 
 
@@ -72,3 +75,97 @@ def test_ventilation_guidance_for_elevated_aqi() -> None:
 def test_ventilation_guidance_for_lower_aqi() -> None:
     """Lower outdoor AQI does not trigger elevated-air guidance."""
     assert "Ventilate when useful" in safe_ventilation_guidance(40)
+
+
+@pytest.mark.asyncio
+async def test_request_body_limit_rejects_oversized_streamed_body() -> None:
+    """The body cap rejects chunked payloads and applies security headers."""
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"a" * 700, "more_body": True},
+        {"type": "http.request", "body": b"b" * 400, "more_body": False},
+    ]
+    responses: list[Message] = []
+    downstream_called = False
+
+    async def receive() -> Message:
+        return messages.pop(0) if messages else {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        responses.append(message)
+
+    async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
+        nonlocal downstream_called
+        downstream_called = True
+
+    middleware = SecurityHeadersMiddleware(
+        downstream,
+        Settings(_env_file=None, max_request_bytes=1024),
+    )
+    await middleware({"type": "http", "headers": []}, receive, send)
+
+    start = next(message for message in responses if message["type"] == "http.response.start")
+    headers = dict(start["headers"])
+    assert start["status"] == 413
+    assert headers[b"x-content-type-options"] == b"nosniff"
+    assert b"x-request-id" in headers
+    assert not downstream_called
+
+
+@pytest.mark.asyncio
+async def test_request_body_limit_replays_valid_streamed_body() -> None:
+    """Accepted chunks are replayed as the same request body to the route."""
+    messages: list[Message] = [
+        {"type": "http.request", "body": b"first ", "more_body": True},
+        {"type": "http.request", "body": b"second", "more_body": False},
+    ]
+    responses: list[Message] = []
+    received_body = b""
+    received_disconnect = False
+
+    async def receive() -> Message:
+        return messages.pop(0) if messages else {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        responses.append(message)
+
+    async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
+        nonlocal received_body, received_disconnect
+        request = await receive()
+        received_body = request.get("body", b"")
+        received_disconnect = (await receive())["type"] == "http.disconnect"
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    middleware = SecurityHeadersMiddleware(
+        downstream,
+        Settings(_env_file=None, max_request_bytes=1024),
+    )
+    await middleware({"type": "http", "headers": []}, receive, send)
+
+    start = next(message for message in responses if message["type"] == "http.response.start")
+    assert start["status"] == 204
+    assert received_body == b"first second"
+    assert received_disconnect
+
+
+@pytest.mark.asyncio
+async def test_request_body_limit_preserves_client_disconnect() -> None:
+    """An early client disconnect remains visible to the downstream app."""
+    received: list[Message] = []
+
+    async def receive() -> Message:
+        return {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        pass
+
+    async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
+        received.append(await receive())
+
+    middleware = SecurityHeadersMiddleware(
+        downstream,
+        Settings(_env_file=None, max_request_bytes=1024),
+    )
+    await middleware({"type": "http", "headers": []}, receive, send)
+
+    assert received == [{"type": "http.disconnect"}]
